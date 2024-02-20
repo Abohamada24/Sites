@@ -21,7 +21,7 @@
     "id": "bing",
     "title": "TGx",
     "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAOBAMAAADpk+DfAAAAGFBMVEVPUU5hW0ZtYkGLczSkginElRnZoxL+uQNIeozOAAAARElEQVQI12MoBwOGAhUIxQihGKBUkRuYKmYQSQcJMjCwg6hiEMVUZgCi1AwYGMMZigwYGNzLgeoYzIAaygNFQdohRgMAOIQZ19+LH9IAAAAASUVORK5CYII=",
-    "url": "https://torrentgalaxy.to/torrents.php?search={{IMDB_ID}}&amp;lang=0&amp;nox=2",
+    "url": "https://torrentgalaxy.to/torrents.php?search=tt{{IMDB_ID}}&amp;lang=0&amp;nox=2",
     "category": "search"
   },
   {
