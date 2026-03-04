@@ -1,0 +1,6 @@
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+yt-dlp>=2023.10.13
+pysubs2>=1.6.1
+python-dotenv>=1.0.0
+tqdm>=4.66.0
