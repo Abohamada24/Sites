@@ -1,3 +1,4 @@
+%%writefile interactive.py
 #!/usr/bin/env python3
 """
 🎬 Sites - Interactive Subtitle Downloader
@@ -347,51 +348,165 @@ class InteractiveDownloader:
         print(f"📋 إجمالي النتائج: {len(all_results)}")
         print(f"{'='*60}\n")
         
-        # 4. التحميل التلقائي أو الاختيار
-        if self.auto_download:
-            # تحميل أفضل 3 نتائج تلقائياً
-            print("📥 التحميل التلقائي لأفضل النتائج...\n")
+        # 4. التحميل التلقائي
+        print("📥 التحميل التلقائي لأفضل النتائج...\n")
+        
+        for i, (source, result) in enumerate(all_results[:3], 1):
+            print(f"\n[{i}/3] تحميل: {result['title'][:50]}...")
             
-            for i, (source, result) in enumerate(all_results[:3], 1):
-                print(f"\n[{i}/3] تحميل: {result['title'][:50]}...")
+            try:
+                if source == 'opensubtitles':
+                    filepath = self.opensubtitles.download(
+                        result['url'],
+                        output_dir=str(self.output_dir / 'opensubtitles')
+                    )
+                else:
+                    filepath = self.subscene.download(
+                        result['url'],
+                        output_dir=str(self.output_dir / 'subscene')
+                    )
                 
-                try:
-                    if source == 'opensubtitles':
-                        filepath = self.opensubtitles.download(
-                            result['url'],
-                            output_dir=str(self.output_dir / 'opensubtitles')
-                        )
-                    else:
-                        filepath = self.subscene.download(
-                            result['url'],
-                            output_dir=str(self.output_dir / 'subscene')
-                        )
-                    
-                    if filepath:
-                        downloaded_files.append(filepath)
-                        print(f"   ✅ تم التحميل")
-                    
-                    # تأخير بسيط
-                    time.sleep(1)
-                    
-                except Exception as e:
-                    print(f"   ❌ فشل: {e}")
-        else:
-            # عرض للاختيار اليدوي
-            downloaded_files = self._interactive_select(all_results)
+                if filepath:
+                    downloaded_files.append(filepath)
+                    print(f"   ✅ تم التحميل")
+                
+                # تأخير بسيط
+                time.sleep(1)
+                
+            except Exception as e:
+                print(f"   ❌ فشل: {e}")
         
         return downloaded_files
     
-    def _interactive_select(self, results: List[tuple]) -> List[str]:
-        """اختيار تفاعلي للنتائج"""
+    def _auto_clean_files(self, files: List[str]) -> List[str]:
+        """تنظيف تلقائي للملفات"""
         
-        print("\n📋 النتائج المتاحة:\n")
+        print(f"\n🧹 تنظيف تلقائي لـ {len(files)} ملف...\n")
         
-        for i, (source, result) in enumerate(results, 1):
-            print(f"{i}. [{source}] {result['title'][:60]}")
+        cleaned_files = []
         
-        print(f"\n0. تحميل الكل")
-        print(f"q. إلغاء")
+        for filepath in files:
+            if filepath and os.path.exists(filepath):
+                try:
+                    cleaned = FileHandler.clean_subtitle(
+                        filepath,
+                        remove_ads=True,
+                        remove_html=True
+                    )
+                    
+                    if cleaned:
+                        cleaned_files.append(cleaned)
+                        print(f"   ✅ تم تنظيف: {Path(filepath).name}")
+                    else:
+                        cleaned_files.append(filepath)
+                        
+                except Exception as e:
+                    cleaned_files.append(filepath)
+                    print(f"   ⚠️ تخطي التنظيف: {e}")
         
-        while True:
+        return cleaned_files
+    
+    def _show_results(self, files: List[str]):
+        """عرض النتائج النهائية"""
+        
+        print(f"\n{'='*60}")
+        print("📊 النتائج النهائية")
+        print(f"{'='*60}\n")
+        
+        if not files:
+            print("❌ لم يتم تحميل أي ملفات")
+            return
+        
+        valid_files = [f for f in files if f and os.path.exists(f)]
+        
+        print(f"✅ تم تحميل {len(valid_files)} ملف:\n")
+        
+        total_size = 0
+        
+        for i, filepath in enumerate(valid_files, 1):
+            path = Path(filepath)
+            size = path.stat().st_size / 1024  # KB
+            total_size += size
             
+            print(f"   {i}. 📄 {path.name}")
+            print(f"      📍 {filepath}")
+            print(f"      📊 {size:.2f} KB\n")
+        
+        print(f"{'='*60}")
+        print(f"📊 الإجمالي: {len(valid_files)} ملف ({total_size:.2f} KB)")
+        print(f"📁 مجلد الحفظ: {self.output_dir}")
+        print(f"{'='*60}\n")
+    
+    def _normalize_language(self, language: str) -> List[str]:
+        """تحويل اللغة لصيغة مناسبة"""
+        
+        lang_map = {
+            'ara': ['ar', 'ara', 'Arabic'],
+            'ar': ['ar', 'ara', 'Arabic'],
+            'arabic': ['ar', 'ara', 'Arabic'],
+            'العربية': ['ar', 'ara', 'Arabic'],
+            'eng': ['en', 'eng', 'English'],
+            'en': ['en', 'eng', 'English'],
+            'english': ['en', 'eng', 'English'],
+        }
+        
+        return lang_map.get(language.lower(), [language])
+    
+    def _get_language_name(self, code: str) -> str:
+        """الحصول على اسم اللغة"""
+        
+        names = {
+            'ara': 'Arabic',
+            'ar': 'Arabic',
+            'eng': 'English',
+            'en': 'English',
+        }
+        
+        return names.get(code.lower(), code)
+
+
+# =========================================
+# 🚀 دالة سريعة للاستخدام المباشر
+# =========================================
+
+def quick_download(input_value: str, language: str = 'ara', output_dir: str = './subtitles'):
+    """
+    ⚡ تحميل سريع - دالة واحدة للكل
+    
+    Args:
+        input_value: رابط يوتيوب، رابط مباشر، أو اسم فيلم
+        language: اللغة (ara, eng)
+        output_dir: مجلد الحفظ
+        
+    Returns:
+        قائمة الملفات المحملة
+        
+    Example:
+        files = quick_download("Inception", "ara")
+        files = quick_download("https://youtube.com/watch?v=xxx")
+    """
+    
+    downloader = InteractiveDownloader(output_dir=output_dir)
+    return downloader.process(input_value, language=language)
+
+
+# =========================================
+# 🎯 التشغيل الرئيسي
+# =========================================
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='🎬 Sites - Interactive Subtitle Downloader')
+    parser.add_argument('input', nargs='?', help='رابط أو اسم فيلم')
+    parser.add_argument('--lang', '-l', default='ara', help='اللغة (ara/eng)')
+    parser.add_argument('--output', '-o', default='./subtitles', help='مجلد الحفظ')
+    
+    args = parser.parse_args()
+    
+    if args.input:
+        # تحميل مباشر
+        quick_download(args.input, language=args.lang, output_dir=args.output)
+    else:
+        print("⚠️ الرجاء إدخال رابط أو اسم فيلم")
+        print("مثال: python interactive.py 'Inception' --lang ara")
