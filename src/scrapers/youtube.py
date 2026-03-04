@@ -1,72 +1,27 @@
+%%writefile src/scrapers/youtube_fixed.py
 """
-YouTube subtitle scraper using yt-dlp
+YouTube subtitle scraper - نسخة محسّنة
 """
 
 import yt_dlp
 from typing import List, Optional, Dict
 from pathlib import Path
 from .base_scraper import BaseScraper
+import os
+import re
 
 class YouTubeScraper(BaseScraper):
-    """تحميل الترجمات من يوتيوب"""
+    """تحميل الترجمات من يوتيوب - نسخة محسنة"""
     
     def __init__(self):
-        """تهيئة YouTube Scraper"""
         super().__init__()
-        
         self.ydl_opts_base = {
-            'quiet': True,
-            'no_warnings': True,
-            'ignoreerrors': True,
+            'quiet': False,
+            'no_warnings': False,
         }
     
-    def search(self, query: str, **kwargs) -> List[Dict]:
-        """
-        البحث عن فيديوهات في يوتيوب
-        
-        Args:
-            query: نص البحث
-            **kwargs: max_results (عدد النتائج)
-            
-        Returns:
-            قائمة بالنتائج
-        """
-        max_results = kwargs.get('max_results', 5)
-        search_url = f"ytsearch{max_results}:{query}"
-        
-        try:
-            with yt_dlp.YoutubeDL(self.ydl_opts_base) as ydl:
-                search_results = ydl.extract_info(search_url, download=False)
-                
-                results = []
-                if 'entries' in search_results:
-                    for entry in search_results['entries']:
-                        if entry:
-                            results.append({
-                                'title': entry.get('title', 'Unknown'),
-                                'url': entry.get('webpage_url', ''),
-                                'duration': entry.get('duration', 0),
-                                'channel': entry.get('uploader', 'Unknown'),
-                                'views': entry.get('view_count', 0),
-                            })
-                
-                self.logger.info(f"✅ تم العثور على {len(results)} فيديو")
-                return results
-                
-        except Exception as e:
-            self.logger.error(f"❌ خطأ في البحث: {e}")
-            return []
-    
     def get_available_subtitles(self, video_url: str) -> Dict:
-        """
-        الحصول على الترجمات المتاحة لفيديو
-        
-        Args:
-            video_url: رابط الفيديو
-            
-        Returns:
-            قاموس بالترجمات المتاحة
-        """
+        """الحصول على الترجمات المتاحة"""
         ydl_opts = {
             **self.ydl_opts_base,
             'skip_download': True,
@@ -79,9 +34,7 @@ class YouTubeScraper(BaseScraper):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
                 
-                # الترجمات اليدوية
                 manual_subs = info.get('subtitles', {})
-                # الترجمات التلقائية
                 auto_subs = info.get('automatic_captions', {})
                 
                 result = {
@@ -109,17 +62,7 @@ class YouTubeScraper(BaseScraper):
         subtitle_format: str = 'srt'
     ) -> List[str]:
         """
-        تحميل الترجمات من فيديو يوتيوب
-        
-        Args:
-            video_url: رابط الفيديو
-            output_dir: مجلد الحفظ
-            languages: قائمة اللغات (مثل: ['ar', 'en'])
-            auto_generated: السماح بالترجمات التلقائية
-            subtitle_format: صيغة الترجمة (srt, vtt, etc.)
-            
-        Returns:
-            قائمة بمسارات الملفات المحملة
+        تحميل الترجمات - نسخة محسنة
         """
         if languages is None:
             languages = ['ar', 'en']
@@ -127,95 +70,125 @@ class YouTubeScraper(BaseScraper):
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         
+        # خيارات محسّنة
         ydl_opts = {
-            **self.ydl_opts_base,
             'writesubtitles': True,
-            'writeautomaticsub': auto_generated,
+            'writeautomaticsub': True,  # مهم جداً!
             'subtitleslangs': languages,
             'skip_download': True,
-            'subtitlesformat': subtitle_format,
             'outtmpl': str(output_path / '%(title)s.%(ext)s'),
+            'subtitlesformat': 'srt/best',  # محسّن
+            'quiet': False,
+            'no_warnings': False,
         }
         
         try:
             self.logger.info(f"📺 معالجة: {video_url}")
+            self.logger.info(f"🌐 اللغات: {languages}")
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # التحميل
                 info = ydl.extract_info(video_url, download=True)
                 title = info.get('title', 'video')
+                
+                # تنظيف اسم الملف
+                safe_title = re.sub(r'[<>:"/\\|?*]', '_', title)
                 
                 # البحث عن الملفات المحملة
                 downloaded_files = []
                 
-                # البحث عن جميع ملفات الترجمة
-                for lang in languages:
-                    for ext in [subtitle_format, 'vtt', 'srt']:
-                        patterns = [
-                            f"{title}.{lang}.{ext}",
-                            f"{title}.{lang}-*.{ext}",
-                        ]
-                        
-                        for pattern in patterns:
-                            files = list(output_path.glob(pattern))
-                            downloaded_files.extend(files)
+                # البحث في المجلد
+                for file in output_path.iterdir():
+                    if file.suffix in ['.srt', '.vtt', '.en.srt', '.ar.srt']:
+                        downloaded_files.append(str(file))
                 
-                # إزالة التكرار
-                downloaded_files = list(set(downloaded_files))
+                # إذا لم يجد ملفات، جرب طرق بديلة
+                if not downloaded_files:
+                    self.logger.warning("⚠️ لم يتم العثور على ملفات بالطريقة العادية")
+                    self.logger.info("🔄 محاولة طريقة بديلة...")
+                    
+                    # طريقة بديلة: تحميل يدوي
+                    downloaded_files = self._download_subtitles_manual(
+                        video_url, 
+                        output_path, 
+                        languages
+                    )
                 
                 self.logger.info(f"✅ تم تحميل {len(downloaded_files)} ملف ترجمة")
                 
                 for f in downloaded_files:
-                    self.logger.info(f"   📄 {f.name}")
+                    self.logger.info(f"   📄 {Path(f).name}")
                 
-                return [str(f) for f in downloaded_files]
+                return downloaded_files
                 
         except Exception as e:
             self.logger.error(f"❌ خطأ: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
-    def download_video_with_subtitles(
-        self,
-        video_url: str,
-        output_dir: str = './downloads',
-        languages: Optional[List[str]] = None,
-        quality: str = 'best'
-    ) -> Optional[str]:
+    def _download_subtitles_manual(
+        self, 
+        video_url: str, 
+        output_path: Path,
+        languages: List[str]
+    ) -> List[str]:
         """
-        تحميل الفيديو مع الترجمات مدمجة
-        
-        Args:
-            video_url: رابط الفيديو
-            output_dir: مجلد الحفظ
-            languages: قائمة اللغات
-            quality: جودة الفيديو
-            
-        Returns:
-            مسار ملف الفيديو
+        تحميل يدوي للترجمات (طريقة بديلة)
         """
-        if languages is None:
-            languages = ['ar', 'en']
-        
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-        
-        ydl_opts = {
-            'format': quality,
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': languages,
-            'outtmpl': str(output_path / '%(title)s.%(ext)s'),
-        }
+        downloaded = []
         
         try:
-            self.logger.info(f"📥 تحميل الفيديو مع الترجمات...")
+            # الحصول على معلومات الفيديو
+            ydl_opts = {'quiet': True, 'skip_download': True}
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(video_url, download=True)
-                filename = ydl.prepare_filename(info)
+                info = ydl.extract_info(video_url, download=False)
                 
-                self.logger.info(f"✅ تم الحفظ: {filename}")
-                return filename
+                title = info.get('title', 'video')
+                safe_title = re.sub(r'[<>:"/\\|?*]', '_', title)
                 
+                # الحصول على الترجمات
+                auto_captions = info.get('automatic_captions', {})
+                subtitles = info.get('subtitles', {})
+                
+                # دمج الاثنين
+                all_subs = {**subtitles, **auto_captions}
+                
+                for lang in languages:
+                    if lang in all_subs:
+                        formats = all_subs[lang]
+                        
+                        # ابحث عن صيغة SRT
+                        srt_format = None
+                        for fmt in formats:
+                            if fmt.get('ext') == 'srt':
+                                srt_format = fmt
+                                break
+                        
+                        # إذا لم يجد SRT، خذ أول صيغة
+                        if not srt_format and formats:
+                            srt_format = formats[0]
+                        
+                        if srt_format:
+                            # تحميل الملف
+                            import requests
+                            url = srt_format.get('url')
+                            
+                            if url:
+                                response = requests.get(url)
+                                
+                                # حفظ الملف
+                                filename = f"{safe_title}.{lang}.srt"
+                                filepath = output_path / filename
+                                
+                                with open(filepath, 'wb') as f:
+                                    f.write(response.content)
+                                
+                                downloaded.append(str(filepath))
+                                self.logger.info(f"   ✅ تم تحميل: {lang}")
+            
         except Exception as e:
-            self.logger.error(f"❌ خطأ: {e}")
-            return None
+            self.logger.error(f"❌ خطأ في التحميل اليدوي: {e}")
+        
+        return downloaded
