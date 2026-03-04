@@ -1,4 +1,5 @@
-# 🎬 Sites - Subtitle Downloader & Manager
+%%writefile README.md
+# 🎬 Sites - Subtitle Downloader
 
 <div align="center">
 
@@ -6,34 +7,52 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
-**أداة قوية وسهلة لتحميل وإدارة ملفات الترجمة من مصادر متعددة**
+**A powerful and easy-to-use tool for downloading and managing subtitle files from multiple sources**
 
-[English](./README.md) | [العربية](./README_AR.md)
+[**العربية**](./README_AR.md) | English
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Abohamada24/Sites/blob/main/notebooks/demo_colab.ipynb)
 
 </div>
 
 ---
 
-## ✨ المميزات
+## ✨ Features
 
-- 🔍 **بحث ذكي** في مواقع الترجمة الشهيرة
-- ⬇️ **تحميل سريع** مع progress bar
-- 🎯 **دعم متعدد المصادر**: OpenSubtitles, Subscene, YouTube
-- 🌐 **دعم اللغات**: العربية، الإنجليزية، وأكثر
-- 📦 **سهل التثبيت والاستخدام**
-- 🚀 **متوافق مع Google Colab**
+### 🔍 Smart Search
+- Multi-source support (OpenSubtitles, Subscene, YouTube)
+- Search by name, IMDB ID, or video URL
+- Filter by language, quality, and rating
+
+### ⬇️ Powerful Download
+- Fast download with progress bar
+- Resume on interruption
+- Batch downloads
+- ZIP/RAR support
+
+### 🛠️ Advanced Tools
+- Format conversion (SRT, VTT, ASS, SSA)
+- Auto-cleaning (remove ads and HTML tags)
+- Merge multiple files
+- Extract subtitle information
+
+### 🌐 Language Support
+- Arabic
+- English
+- French
+- Spanish
+- 50+ languages
 
 ---
 
-## 🚀 التثبيت السريع
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# استنساخ المشروع
+# Clone the repository
 git clone https://github.com/Abohamada24/Sites.git
 cd Sites
 
-# تثبيت المتطلبات
+# Install requirements
 pip install -r requirements.txt
-
-# أو التثبيت كحزمة
-pip install .
